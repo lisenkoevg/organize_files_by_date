@@ -10,10 +10,11 @@ function optionDefinitions() {
     { name: 'help', alias: 'h', type: Boolean, description: 'show this help' },
     { name: 'dir', alias: 'd', type: String, description: 'directory to proceed' },
     { name: 'dry-run', alias: 'n', type: Boolean, description: 'don\'t do anything, just show' },
-    { name: 'verbose', alias: 'v', type: Boolean, description: 'show file operations while processing' },
     { name: 'head', type: Number, defaultValue: 0, description: 'process only first N items' },
     { name: 'head-dry-run', type: Number, defaultValue: 10, description: 'print only first N items with --dry-run' },
     { name: 'dir-name-format', type: String, defaultValue: 'YYYY-MM', description: 'format of subdirectories name: YYYY-MM or YYYY' },
+    { name: 'verbose', alias: 'v', type: Boolean, description: 'show file operations while processing' },
+    { name: 'profile', alias: 'p', type: Boolean, description: 'show execution time' },
   ]
 }
 

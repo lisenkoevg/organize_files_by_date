@@ -22,24 +22,28 @@ const DIR_ENTRIES_NO_NEW_SUBDIR = []
 const DIR_ENTRIES_NO_NEW_SUBDIR_HEAD = []
 const STATS = {}
 
-const PARALLEL = 10
+const PARALLEL = 1
 if (cmdOptions['dry-run'] || cmdOptions.verbose) {
   console.log('Cmd options:\n%s\n', JSON.stringify(cmdOptions, null, 2))
 }
 let excludeDirPattern = new RegExp('^' + cmdOptions['dir-name-format'].replace(/Y|M/g, '\\d') + '$')
+cmdOptions.profile && console.time('process')
 fs.stat(cmdOptions.dir) // check if dir exist
   .then(res => fs.readdir(cmdOptions.dir)) // readdir
   .then(files => { // stat dir entries
+    cmdOptions.profile && console.timeLog('process', 'readdir')
     files = files.sort()
     files.forEach(x => {
       DIR_ENTRIES.push(x)
       if (!excludeDirPattern.test(x))
         DIR_ENTRIES_NO_NEW_SUBDIR.push(x)
     })
+    cmdOptions.profile && console.timeLog('process', 'filter exclude')
     DIR_ENTRIES_NO_NEW_SUBDIR.every((x, i) => {
       DIR_ENTRIES_NO_NEW_SUBDIR_HEAD.push(x)
       return (!cmdOptions['head'] || i < cmdOptions['head'] - 1)
     })
+    cmdOptions.profile && console.timeLog('process', 'filter head')
     return async.mapLimit(
       DIR_ENTRIES.map(file => path.join(cmdOptions.dir, file)),
       PARALLEL,
@@ -47,6 +51,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
     )
   })
   .then(stats => { // generate uniq subdir list
+    cmdOptions.profile && console.timeLog('process', 'stats')
     stats.forEach((x, i) => {
       STATS[DIR_ENTRIES[i]] = {
         mtime: x.mtime,
@@ -54,7 +59,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
         dirName: dayjs(x.mtime).format(cmdOptions['dir-name-format'])
       }
     })
-
+    cmdOptions.profile && console.timeLog('process', 'stats1')
     let subdirsToCreate = new Set()
     for (let [ k, v ] of Object.entries(STATS)) {
       let existedEntryIndex = DIR_ENTRIES.indexOf(v.dirName)
@@ -64,6 +69,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
     return Array.from(subdirsToCreate).sort()
   })
   .then(dirs => { //create subdirs
+    cmdOptions.profile && console.timeLog('process', 'make uniq')
     if (cmdOptions['dry-run']) {
       if (dirs.length) {
         let p = path.isAbsolute(cmdOptions.dir) ? cmdOptions.dir : path.join(process.cwd(), cmdOptions.dir)
@@ -97,6 +103,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
     }
   })
   .then(res => { // move dir and files
+    cmdOptions.profile && console.timeLog('process', 'create dirs')
     let copyList = DIR_ENTRIES_NO_NEW_SUBDIR_HEAD.map(
       (file, i) => ({ from: file, to: STATS[file].dirName })
     )
@@ -132,5 +139,9 @@ fs.stat(cmdOptions.dir) // check if dir exist
       )
     }
   })
+  .then(() => {
+    cmdOptions.profile && console.timeLog('process', 'move files')
+    cmdOptions.profile && console.timeEnd('process')
+   })
   .catch(err => { console.error(err) })
 
