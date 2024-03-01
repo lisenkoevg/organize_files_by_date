@@ -21,6 +21,7 @@ const DIR_ENTRIES = []
 const DIR_ENTRIES_NO_NEW_SUBDIR = []
 const DIR_ENTRIES_NO_NEW_SUBDIR_HEAD = []
 const STATS = {}
+const DIRS = []
 
 const PARALLEL = 1
 if (cmdOptions['dry-run'] || cmdOptions.verbose) {
@@ -69,6 +70,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
     return Array.from(subdirsToCreate).sort()
   })
   .then(dirs => { //create subdirs
+    dirs.forEach(x => DIRS.push(x))
     cmdOptions.profile && console.timeLog('process', 'make uniq')
     if (cmdOptions['dry-run']) {
       if (dirs.length) {
@@ -87,19 +89,20 @@ fs.stat(cmdOptions.dir) // check if dir exist
       }
       return null
     } else {
-      let dirsTmp = dirs.map(x => path.join(cmdOptions.dir, x))
       if (cmdOptions.verbose && dirs.length) {
         console.log('Creating directories:')
       }
-      let tmp = async.eachLimit(
-        dirsTmp,
+      return async.eachLimit(
+        dirs,
         PARALLEL,
         (x, cb) => {
-          cmdOptions.verbose && console.log('%s', x)
-          fs.mkdir(x, cb)
+          cmdOptions.verbose && console.log('%s', x, new Date(x))
+          const dir = path.join(cmdOptions.dir, x)
+          async.series([
+            cb => fs.mkdir(dir, cb),
+          ], cb)
         }
       )
-      return tmp
     }
   })
   .then(res => { // move dir and files
@@ -139,8 +142,20 @@ fs.stat(cmdOptions.dir) // check if dir exist
       )
     }
   })
-  .then(() => {
+  .then(() => { // utime subdirs
     cmdOptions.profile && console.timeLog('process', 'move files')
+    return async.eachSeries(
+      DIRS,
+      (dir, cb) => fs.utimes(
+        path.join(cmdOptions.dir, dir),
+        new Date(dir),
+        new Date(dir),
+        cb
+      )
+    )
+  })
+  .then(() => {
+    cmdOptions.profile && console.timeLog('process', 'utime subdirs')
     cmdOptions.profile && console.timeEnd('process')
    })
   .catch(err => { console.error(err) })
