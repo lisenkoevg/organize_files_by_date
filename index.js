@@ -27,7 +27,7 @@ const PARALLEL = 1
 if (cmdOptions['dry-run'] || cmdOptions.verbose) {
   console.log('Cmd options:\n%s\n', JSON.stringify(cmdOptions, null, 2))
 }
-let excludeDirPattern = new RegExp('^' + cmdOptions['dir-name-format'].replace(/Y|M/g, '\\d') + '$')
+let excludeDirPattern = new RegExp('^' + cmdOptions['dir-name-format'].replace(/Y|M|D/g, '\\d') + '$')
 cmdOptions.profile && console.time('process')
 fs.stat(cmdOptions.dir) // check if dir exist
   .then(res => fs.readdir(cmdOptions.dir)) // readdir
@@ -76,7 +76,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
       if (dirs.length) {
         let p = path.isAbsolute(cmdOptions.dir) ? cmdOptions.dir : path.join(process.cwd(), cmdOptions.dir)
         console.log(
-          'Create %s subdirectories in directory "%s":',
+          'Will create %s subdirectories in directory "%s":',
           dirs.length,
           p
         )
@@ -112,7 +112,7 @@ fs.stat(cmdOptions.dir) // check if dir exist
     )
     if (cmdOptions['dry-run']) {
       let p = path.isAbsolute(cmdOptions.dir) ? cmdOptions.dir : path.join(process.cwd(), cmdOptions.dir)
-      console.log('Move %s file(s)/subdirectorie(s) in directory "%s" to subdir:',
+      console.log('Will move %s file(s)/subdirectorie(s) in directory "%s" to subdir:',
         copyList.length,
         path.join(p)
       )
@@ -144,6 +144,8 @@ fs.stat(cmdOptions.dir) // check if dir exist
   })
   .then(() => { // utime subdirs
     cmdOptions.profile && console.timeLog('process', 'move files')
+    if (cmdOptions['dry-run'])
+      return
     return async.eachSeries(
       DIRS,
       (dir, cb) => fs.utimes(
